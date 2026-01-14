@@ -1,0 +1,65 @@
+name: CI Zero Trust (OIDC + No Secrets)
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write     # 👈 OIDC bắt buộc
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  ECR_REPO: my-app
+  APP_NAME: my-app
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1️⃣ Checkout source
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # 2️⃣ Assume IAM Role via OIDC (NO AWS KEY)
+    - name: Configure AWS credentials (OIDC)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::782017371887:role/github-ci-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    # 3️⃣ Login ECR
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v2
+
+    # 4️⃣ Build Docker image (KHÔNG .env)
+    - name: Build image
+      run: |
+        docker build \
+          -t $ECR_REPO:${{ github.sha }} .
+
+    # 5️⃣ Tag image
+    - name: Tag image
+      run: |
+        docker tag $ECR_REPO:${{ github.sha }} \
+        <ACCOUNT_ID>.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPO:${{ github.sha }}
+
+    # 6️⃣ Push image
+    - name: Push image to ECR
+      run: |
+        docker push \
+        782017371887.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPO:${{ github.sha }}
+
+    # # 7️⃣ Update deployment definition (KHÔNG SECRET)
+    # - name: Update launch template / manifest
+    #   run: |
+    #     sed -i "s|IMAGE_TAG|${{ github.sha }}|g" deploy/app.yaml
+
+    # # 8️⃣ Commit manifest (GitOps-style)
+    # - name: Commit deployment change
+    #   run: |
+    #     git config user.name "ci-bot"
+    #     git config user.email "ci@company.com"
+    #     git commit -am "Deploy image ${{ github.sha }}"
+    #     git push
