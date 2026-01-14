@@ -1,0 +1,57 @@
+version: '3'
+services:
+    backend:
+        # image: maverick0809/todob
+        build:
+            context: ./backend
+            dockerfile: Dockerfile
+        container_name: backend
+        networks:
+            - demo-ci
+        ports:
+            - '8080:8080'
+        environment:
+            - MONGO_URI=mongodb://root:password123@mongodb:27017
+            - PORT=8080
+        # env_file:
+        #     - ".env"
+        depends_on:
+            - mongodb
+        restart: always
+
+    frontend:
+        # image: maverick0809/todof
+        build:
+            context: ./frontend
+            dockerfile: Dockerfile
+        container_name: frontend
+        networks:
+            - demo-ci
+        ports:
+            - '3000:3000'
+        stdin_open: true
+        tty: true
+        depends_on:
+            - backend
+
+    mongodb:
+        image: mongo:6.0
+        container_name: chatbot_mongodb
+        expose:
+            - "27017"
+        volumes:
+            - mongo_data:/data/db
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: root
+            MONGO_INITDB_ROOT_PASSWORD: password123
+        restart: always
+        networks:
+            - demo-ci
+
+volumes:
+  mongo_data:
+  
+
+networks:
+    demo-ci:
+        name: demo-ci
