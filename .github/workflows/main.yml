@@ -51,15 +51,21 @@ jobs:
         docker push \
         782017371887.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPO:${{ github.sha }}
 
-    # # 7️⃣ Update deployment definition (KHÔNG SECRET)
-    # - name: Update launch template / manifest
-    #   run: |
-    #     sed -i "s|IMAGE_TAG|${{ github.sha }}|g" deploy/app.yaml
+      # 7️⃣ Deploy via AWS SSM (ZERO TRUST – NO SSH)
+    - name: Deploy to EC2 via SSM
+      run: |
+        aws ssm send-command \
+          --document-name "AWS-RunShellScript" \
+          --targets "Key=tag:App,Values=${APP_NAME}" \
+          --comment "Deploy ${ECR_REPO}:${{ github.sha }}" \
+          --parameters 'commands=[
+            "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin 782017371887.dkr.ecr.${AWS_REGION}.amazonaws.com",
+            "docker pull 782017371887.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${{ github.sha }}",
+            "docker stop app-backend || true",
+            "docker rm app-backend || true",
+            "docker run -d --name app-backend -p 8080:8080 \
+              --env-file /opt/app/.env \
+              782017371887.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${{ github.sha }}"
+          ]' \
+          --region ${AWS_REGION}
 
-    # # 8️⃣ Commit manifest (GitOps-style)
-    # - name: Commit deployment change
-    #   run: |
-    #     git config user.name "ci-bot"
-    #     git config user.email "ci@company.com"
-    #     git commit -am "Deploy image ${{ github.sha }}"
-    #     git push
