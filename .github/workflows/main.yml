@@ -36,14 +36,14 @@ jobs:
     # 4️⃣ Build Docker image (KHÔNG .env)
     - name: Build image
       run: |
-        docker build \
-          -t $ECR_REPO:${{ github.sha }} .
+          cd app-demo/backend
+          docker build -t $ECR_REPO:${{ github.sha }} .
 
     # 5️⃣ Tag image
     - name: Tag image
       run: |
         docker tag $ECR_REPO:${{ github.sha }} \
-        <ACCOUNT_ID>.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPO:${{ github.sha }}
+        782017371887.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPO:${{ github.sha }}
 
     # 6️⃣ Push image
     - name: Push image to ECR
